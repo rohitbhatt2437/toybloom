@@ -207,7 +207,7 @@ export default function CartDrawer() {
                       <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
-                        placeholder="Coupon code (e.g. TOYZZ10)"
+                        placeholder="Enter promo code"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                         className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-toy-coral/30 uppercase font-semibold"

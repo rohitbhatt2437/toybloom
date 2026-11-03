@@ -3,46 +3,105 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
-import { Star, ShoppingBag, Sparkles } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ShoppingBag, Clock, Lock, Heart } from 'lucide-react';
+import { useWishlist } from '@/context/WishlistContext';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
   const { addToCart } = useCart();
+  const { user, openAuthModal } = useAuth();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
-  const isLowStock = product.stock > 0 && product.stock <= 4;
-  const isOutOfStock = product.stock <= 0;
+  const isPriceSet = Boolean(product.price && product.price > 0);
+  const isAvailableForSale = Boolean(isPriceSet && product.status === 'active' && product.stock > 0);
+  const isOutOfStock = Boolean(isPriceSet && product.stock <= 0);
+  const isLowStock = Boolean(isPriceSet && product.stock > 0 && product.stock <= 4);
+
+  const handleOpenToy = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      openAuthModal({
+        title: 'Sign In to View Toy',
+        subtitle: `Continue with Google to view full details, photos, and verified reviews for "${product.title}".`,
+        onSuccess: () => {
+          router.push(`/products/${product.slug}`);
+        },
+      });
+    }
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!user) {
+      openAuthModal({
+        title: 'Sign In to Order',
+        subtitle: `Continue with Google to add "${product.title}" to your cart and place your order.`,
+        onSuccess: () => {
+          if (isAvailableForSale) {
+            addToCart(product, 1);
+          }
+        },
+      });
+      return;
+    }
+
+    if (isAvailableForSale) {
+      addToCart(product, 1);
+    }
+  };
 
   return (
-    <div className="toy-card group bg-white rounded-3xl border border-slate-100/80 shadow-card hover:border-slate-200 overflow-hidden flex flex-col h-full relative">
+    <div className="toy-card group bg-white rounded-3xl border border-slate-100 shadow-card hover:border-slate-200 overflow-hidden flex flex-col h-full relative">
       {/* Badges Container */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 items-start">
-        {product.discountPercent > 0 && (
+        {!isPriceSet ? (
+          <span className="px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+            <Clock className="w-3 h-3" /> Price Pending
+          </span>
+        ) : product.discountPercent > 0 ? (
           <span className="px-2.5 py-1 rounded-full bg-rose-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm">
             {product.discountPercent}% OFF
           </span>
-        )}
-        {product.isBestSeller && (
-          <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black uppercase tracking-wide flex items-center gap-1 shadow-sm">
-            <Sparkles className="w-2.5 h-2.5 fill-slate-900" /> Best Seller
-          </span>
-        )}
+        ) : null}
       </div>
 
-      {/* Age Badge */}
-      <div className="absolute top-3 right-3 z-10">
-        <span className="px-2.5 py-1 rounded-full bg-slate-900/70 backdrop-blur-md text-white text-[10px] font-bold">
-          {product.ageGroup}
+      {/* SKU & Wishlist Badges */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleWishlist(product);
+          }}
+          className={`p-1.5 rounded-full backdrop-blur-md transition-all ${
+            isInWishlist(product._id)
+              ? 'bg-rose-500 text-white shadow-md'
+              : 'bg-white/80 text-slate-600 hover:text-rose-500 hover:bg-white shadow-sm'
+          }`}
+          title={isInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+          aria-label="Wishlist"
+        >
+          <Heart className={`w-3.5 h-3.5 ${isInWishlist(product._id) ? 'fill-white' : ''}`} />
+        </button>
+        <span className="px-2 py-0.5 rounded-full bg-slate-900/70 backdrop-blur-md text-white text-[10px] font-mono font-bold">
+          {product.sku}
         </span>
       </div>
 
-      {/* Product Image */}
+      {/* Real Product Photo */}
       <Link
         href={`/products/${product.slug}`}
+        onClick={handleOpenToy}
         className="relative w-full aspect-square bg-slate-50 overflow-hidden block"
       >
         <Image
@@ -60,7 +119,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div>
           {/* Brand & Category */}
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1.5">
-            <span className="uppercase tracking-wider text-toy-coral">{product.brand}</span>
+            <span className="uppercase tracking-wider text-toy-coral">{product.brand || 'Toy Store'}</span>
             <span className="capitalize px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
               {product.categoryName}
             </span>
@@ -69,54 +128,73 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Title */}
           <Link
             href={`/products/${product.slug}`}
+            onClick={handleOpenToy}
             className="font-bold text-slate-800 text-sm line-clamp-2 hover:text-toy-coral transition-colors mb-2 leading-snug"
           >
             {product.title}
           </Link>
 
-          {/* Rating */}
-          <div className="flex items-center gap-1.5 mb-3">
-            <div className="flex items-center text-amber-400">
-              <Star className="w-3.5 h-3.5 fill-amber-400" />
-            </div>
-            <span className="text-xs font-bold text-slate-700">{product.rating}</span>
-            <span className="text-[11px] text-slate-400">({product.reviewCount})</span>
-          </div>
+          {/* Stock Count */}
+          <p className="text-[11px] text-slate-500 mb-2">
+            In-Stock: <strong className="text-slate-800 font-bold">{product.stock} units</strong>
+          </p>
         </div>
 
         {/* Pricing & Add To Cart Button */}
         <div>
-          {/* Stock Alert */}
+          {/* Low Stock Alert */}
           {isLowStock && (
             <p className="text-[11px] font-bold text-rose-600 mb-1.5 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-              Only {product.stock} left in stock!
+              Only {product.stock} left in store!
             </p>
           )}
 
           <div className="flex items-end justify-between pt-2 border-t border-slate-100">
             <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-black text-slate-900">₹{product.price}</span>
-                {product.mrp > product.price && (
-                  <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
-                )}
-              </div>
-              <p className="text-[10px] text-emerald-600 font-semibold">Inclusive of all taxes</p>
+              {isPriceSet ? (
+                <>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black text-slate-900">₹{product.price}</span>
+                    {product.mrp > product.price && (
+                      <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-emerald-600 font-semibold">Verified Store Price</p>
+                </>
+              ) : (
+                <div>
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                    Price Awaiting Approval
+                  </span>
+                  <p className="text-[10px] text-slate-400 mt-1">Ref Amazon: {product.mrp ? `₹${product.mrp}` : 'N/A'}</p>
+                </div>
+              )}
             </div>
 
             <button
-              onClick={() => addToCart(product, 1)}
-              disabled={isOutOfStock}
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isPriceSet && !isAvailableForSale}
               className={`p-2.5 rounded-2xl flex items-center justify-center transition-all ${
-                isOutOfStock
+                isPriceSet && !isAvailableForSale
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                   : 'bg-toy-coral text-white hover:bg-rose-600 shadow-md shadow-rose-500/20 active:scale-95'
               }`}
-              title={isOutOfStock ? 'Sold Out' : 'Add to Toy Box'}
+              title={
+                !isPriceSet
+                  ? 'Awaiting owner price approval'
+                  : isOutOfStock
+                  ? 'Out of stock'
+                  : 'Add to Cart'
+              }
               aria-label="Add to cart"
             >
-              <ShoppingBag className="w-4 h-4" />
+              {!isPriceSet ? (
+                <Lock className="w-4 h-4 text-slate-400" />
+              ) : (
+                <ShoppingBag className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>

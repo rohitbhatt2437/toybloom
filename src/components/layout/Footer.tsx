@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, ShieldCheck, Heart, Truck, RefreshCw, PhoneCall, MapPin } from 'lucide-react';
+import { Sparkles, ShieldCheck, Truck, RefreshCw, PhoneCall, MapPin, Store } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -12,11 +12,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center sm:text-left">
           <div className="flex items-center gap-4 justify-center sm:justify-start">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0">
-              <Truck className="w-6 h-6" />
+              <Store className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-white text-sm">Free Express Shipping</h4>
-              <p className="text-xs text-slate-400">On all prepaid orders over ₹499</p>
+              <h4 className="font-bold text-white text-sm">Real Store Inventory</h4>
+              <p className="text-xs text-slate-400">Direct from our operating toy shop</p>
             </div>
           </div>
 
@@ -25,28 +25,28 @@ export default function Footer() {
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-white text-sm">100% Certified Safe</h4>
-              <p className="text-xs text-slate-400">ISI certified & BPA-free toys</p>
+              <h4 className="font-bold text-white text-sm">Quality Inspected</h4>
+              <p className="text-xs text-slate-400">Child-safe & non-toxic toys</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4 justify-center sm:justify-start">
             <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 flex-shrink-0">
-              <RefreshCw className="w-6 h-6" />
+              <Truck className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-white text-sm">Hassle-Free Returns</h4>
-              <p className="text-xs text-slate-400">7-day replacement guarantee</p>
+              <h4 className="font-bold text-white text-sm">Prompt Dispatch</h4>
+              <p className="text-xs text-slate-400">Packed securely for shipping</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4 justify-center sm:justify-start">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <Heart className="w-6 h-6" />
+              <RefreshCw className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-white text-sm">50,000+ Happy Kids</h4>
-              <p className="text-xs text-slate-400">Loved by parents across India</p>
+              <h4 className="font-bold text-white text-sm">Store Support</h4>
+              <p className="text-xs text-slate-400">Assistance for parents & gifts</p>
             </div>
           </div>
         </div>
@@ -54,7 +54,7 @@ export default function Footer() {
 
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-2.5">
@@ -66,28 +66,24 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Toyzz is India&apos;s premier children&apos;s toy destination designed to spark imagination, STEM learning, and playful exploration. Inspired by modern exploratory play spaces with non-toxic, certified craftsmanship.
+              Official online storefront for our toy store. Browse actual in-stock educational toys, electronic robots, Montessori aids, and creative drawing tools.
             </p>
-            <div className="flex items-center gap-3 text-xs text-slate-400 pt-2">
+            <div className="flex flex-col gap-1.5 text-xs text-slate-400 pt-2">
               <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-amber-400" /> Bengaluru, Karnataka
+                <MapPin className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span>Store Address: [Pending Owner Address Input]</span>
               </span>
-              <span>•</span>
               <span className="flex items-center gap-1.5">
-                <PhoneCall className="w-4 h-4 text-emerald-400" /> 1800-TOYZZ-01
+                <PhoneCall className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>Phone / WhatsApp: [Pending Owner Phone Input]</span>
               </span>
             </div>
           </div>
 
           {/* Quick Categories */}
           <div>
-            <h5 className="text-white font-bold text-sm mb-4">Play Zones</h5>
+            <h5 className="text-white font-bold text-sm mb-4">Store Sections</h5>
             <ul className="space-y-2 text-xs">
-              <li>
-                <Link href="/products?category=build" className="hover:text-amber-400 transition-colors">
-                  🏗️ Build (Blocks & Tiles)
-                </Link>
-              </li>
               <li>
                 <Link href="/products?category=play" className="hover:text-rose-400 transition-colors">
                   🎮 Play (Robots & Tracks)
@@ -95,25 +91,25 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/products?category=discover" className="hover:text-sky-400 transition-colors">
-                  🔬 Discover (Lamps & Space)
+                  🔬 Discover (Lamps & Starry Lights)
                 </Link>
               </li>
               <li>
                 <Link href="/products?category=create" className="hover:text-purple-400 transition-colors">
-                  🎨 Create (3D Pens & Art)
+                  🎨 Create (3D Pens & Drawing Boards)
                 </Link>
               </li>
               <li>
                 <Link href="/products?category=learn" className="hover:text-emerald-400 transition-colors">
-                  📚 Learn (Montessori & Sound)
+                  📚 Learn (Montessori & Flashcards)
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Customer Service */}
+          {/* Customer Service & Admin */}
           <div>
-            <h5 className="text-white font-bold text-sm mb-4">Customer Care</h5>
+            <h5 className="text-white font-bold text-sm mb-4">Customer Care & Store Management</h5>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/orders" className="hover:text-white transition-colors">
@@ -121,63 +117,23 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/checkout" className="hover:text-white transition-colors">
-                  Checkout & Payment
-                </Link>
-              </li>
-              <li>
                 <Link href="/account/login" className="hover:text-white transition-colors">
-                  Account Sign In
+                  Customer Sign In
                 </Link>
               </li>
               <li>
-                <span className="text-slate-500">Shipping & Delivery Info</span>
-              </li>
-              <li>
-                <span className="text-slate-500">Replacement Guarantee</span>
+                <Link href="/admin" className="text-amber-400 hover:text-amber-300 font-bold transition-colors">
+                  Admin Inventory & Price Approval
+                </Link>
               </li>
             </ul>
-          </div>
-
-          {/* Newsletter & Payments */}
-          <div>
-            <h5 className="text-white font-bold text-sm mb-3">Join the Toyzz Club</h5>
-            <p className="text-xs text-slate-400 mb-3">
-              Subscribe for weekly new arrivals, STEM guides, and exclusive secret coupon codes.
-            </p>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-2">
-              <input
-                type="email"
-                placeholder="Enter parent's email"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs transition-colors"
-              >
-                Get 15% OFF Coupon
-              </button>
-            </form>
-
-            <div className="pt-4">
-              <p className="text-[11px] text-slate-400 mb-1.5 font-semibold">100% Secure Payments Powered By:</p>
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300">
-                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-sky-400">UPI</span>
-                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-blue-400">Razorpay</span>
-                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-400">Cards</span>
-                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-emerald-400">COD</span>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Bottom copyright */}
         <div className="pt-10 mt-10 border-t border-slate-800 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} Toyzz India Retail Pvt Ltd. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Toy Store. All rights reserved.</p>
           <div className="flex items-center gap-6 text-[11px]">
-            <span>Privacy Policy</span>
-            <span>Terms of Service</span>
-            <span>Child Safety Standards</span>
             <Link href="/admin" className="text-slate-400 hover:text-white">Admin Portal</Link>
           </div>
         </div>

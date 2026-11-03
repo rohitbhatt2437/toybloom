@@ -68,8 +68,24 @@ export interface User {
   email: string;
   role: 'customer' | 'admin';
   phone?: string;
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  registrationMethod: 'email' | 'phone';
   addresses?: UserAddress[];
   createdAt?: string;
+}
+
+export interface OtpRecord {
+  _id: string;
+  identifier: string; // normalized email or phone number
+  target: 'email' | 'phone';
+  otpHash: string;
+  type: 'registration' | 'login' | 'reset_password';
+  expiresAt: number; // unix timestamp in ms
+  attempts: number;
+  resendAvailableAt: number; // unix timestamp in ms
+  consumed: boolean;
+  createdAt: string;
 }
 
 export type OrderStatus =

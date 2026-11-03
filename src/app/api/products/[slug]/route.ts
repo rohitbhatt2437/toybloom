@@ -8,9 +8,13 @@ export async function GET(
 ) {
   try {
     const slugOrId = params.slug;
-    let product = await getProductBySlug(slugOrId);
+    const token = req.cookies.get('toyzz_token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
+    const decoded = token ? verifyToken(token) : null;
+    const isAdmin = decoded?.role === 'admin';
+
+    let product = await getProductBySlug(slugOrId, isAdmin);
     if (!product) {
-      product = await getProductById(slugOrId);
+      product = await getProductById(slugOrId, isAdmin);
     }
 
     if (!product) {

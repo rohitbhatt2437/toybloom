@@ -14,6 +14,10 @@ export async function GET(req: NextRequest) {
     const inStockOnly = searchParams.get('inStockOnly') === 'true';
     const sortBy = (searchParams.get('sortBy') as any) || 'featured';
 
+    const token = req.cookies.get('toyzz_token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
+    const decoded = token ? verifyToken(token) : null;
+    const isAdmin = decoded?.role === 'admin';
+
     const products = await getAllProducts({
       search,
       category,
@@ -22,7 +26,7 @@ export async function GET(req: NextRequest) {
       maxPrice,
       inStockOnly,
       sortBy,
-    });
+    }, isAdmin);
 
     return NextResponse.json({ success: true, count: products.length, products });
   } catch (error: any) {

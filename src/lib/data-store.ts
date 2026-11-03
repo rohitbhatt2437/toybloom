@@ -1,8 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { Product, Category, Order, User, Coupon, OrderStatus, FilterState } from '@/types';
+import { Product, Category, Order, User, Coupon, OrderStatus, FilterState, OtpRecord } from '@/types';
 import { initialCategories, initialProducts, initialCoupons } from './seed-data';
 import { hashPassword } from './auth';
+import { connectToDatabase } from './db';
 
 interface StoreData {
   products: Product[];
@@ -10,6 +11,7 @@ interface StoreData {
   orders: Order[];
   users: (User & { passwordHash: string })[];
   coupons: Coupon[];
+  otps: OtpRecord[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -27,127 +29,30 @@ async function ensureDataDirectory(): Promise<void> {
 
 async function initDefaultStore(): Promise<StoreData> {
   const adminPassword = await hashPassword('admin123');
-  const parentPassword = await hashPassword('parent123');
 
   const defaultUsers: (User & { passwordHash: string })[] = [
     {
       _id: 'user-admin-001',
-      name: 'Toyzz Store Manager',
+      name: 'Toy Store Admin',
       email: 'admin@toyzz.com',
       passwordHash: adminPassword,
       role: 'admin',
-      phone: '+91 98765 43210',
+      phone: '',
+      isEmailVerified: true,
+      isPhoneVerified: true,
+      registrationMethod: 'email',
       addresses: [],
       createdAt: new Date().toISOString(),
-    },
-    {
-      _id: 'user-parent-002',
-      name: 'Priya Sharma',
-      email: 'parent@toyzz.com',
-      passwordHash: parentPassword,
-      role: 'customer',
-      phone: '+91 91234 56789',
-      addresses: [
-        {
-          fullName: 'Priya Sharma',
-          phone: '+91 91234 56789',
-          street: 'Flat 402, Sunshine Meadows, Indiranagar',
-          city: 'Bengaluru',
-          state: 'Karnataka',
-          pincode: '560038',
-          landmark: 'Near 100ft Road Metro',
-          isDefault: true,
-        },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  // Seed sample orders for analytics & tracking demo
-  const sampleOrders: Order[] = [
-    {
-      _id: 'ord-001',
-      orderNumber: 'TYZ-2026-90412',
-      customer: {
-        userId: 'user-parent-002',
-        name: 'Priya Sharma',
-        email: 'parent@toyzz.com',
-        phone: '+91 91234 56789',
-      },
-      items: [
-        {
-          productId: 'prod-001',
-          title: 'Toy Imagine Night Projector Lamp 360° Rotating LED Starry Light',
-          price: 699,
-          quantity: 1,
-          image: initialProducts[0].featuredImage,
-          slug: initialProducts[0].slug,
-        },
-        {
-          productId: 'prod-006',
-          title: 'LCD Magic Writing & Drawing Tablet (8.5 Inch Multicolour Screen)',
-          price: 150,
-          quantity: 1,
-          image: initialProducts[5].featuredImage,
-          slug: initialProducts[5].slug,
-        },
-      ],
-      shippingAddress: {
-        fullName: 'Priya Sharma',
-        phone: '+91 91234 56789',
-        street: 'Flat 402, Sunshine Meadows, Indiranagar',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        pincode: '560038',
-        landmark: 'Near 100ft Road Metro',
-        isDefault: true,
-      },
-      paymentInfo: {
-        method: 'razorpay',
-        status: 'paid',
-        razorpayOrderId: 'order_DEMO90412',
-        razorpayPaymentId: 'pay_DEMO90412',
-        paidAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      },
-      pricing: {
-        subtotal: 849,
-        discountAmount: 85,
-        shippingFee: 0,
-        taxAmount: 0,
-        total: 764,
-      },
-      couponApplied: 'TOYZZ10',
-      orderStatus: 'shipped',
-      statusTimeline: [
-        {
-          status: 'confirmed',
-          timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-          comment: 'Payment verified successfully via Razorpay UPI.',
-        },
-        {
-          status: 'processing',
-          timestamp: new Date(Date.now() - 86400000 * 1.5).toISOString(),
-          comment: 'Order packed with bubble protection at Bengaluru Central Hub.',
-        },
-        {
-          status: 'shipped',
-          timestamp: new Date(Date.now() - 86400000 * 0.8).toISOString(),
-          comment: 'Dispatched via Express Courier. Tracking: BLR-TYZ-90412',
-        },
-      ],
-      trackingNumber: 'BLR-TYZ-90412',
-      estimatedDelivery: 'Tomorrow by 4:00 PM',
-      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      updatedAt: new Date(Date.now() - 86400000 * 0.8).toISOString(),
     },
   ];
 
   return {
     products: initialProducts,
     categories: initialCategories,
-    orders: sampleOrders,
+    orders: [], // Real orders list starts empty
     users: defaultUsers,
-    coupons: initialCoupons,
+    coupons: [], // Real coupons configured by admin
+    otps: [],
   };
 }
 
@@ -161,6 +66,16 @@ async function getStore(): Promise<StoreData> {
   try {
     const raw = await fs.readFile(STORE_FILE, 'utf-8');
     memoryStore = JSON.parse(raw);
+    if (!memoryStore!.otps) {
+      memoryStore!.otps = [];
+    }
+    // Ensure admin is verified
+    const admin = memoryStore!.users.find((u) => u.email === 'admin@toyzz.com');
+    if (admin) {
+      admin.isEmailVerified = true;
+      admin.isPhoneVerified = true;
+      admin.registrationMethod = admin.registrationMethod || 'email';
+    }
     return memoryStore!;
   } catch {
     memoryStore = await initDefaultStore();
@@ -169,15 +84,46 @@ async function getStore(): Promise<StoreData> {
   }
 }
 
+async function syncToMongo(store: StoreData): Promise<void> {
+  try {
+    const mongooseConn = await connectToDatabase();
+    if (!mongooseConn) return;
+    const db = mongooseConn.connection.db;
+    if (!db) return;
+
+    if (store.orders.length > 0) {
+      const ordersCol = db.collection('orders');
+      for (const order of store.orders) {
+        await ordersCol.updateOne({ _id: order._id as any }, { $set: order }, { upsert: true });
+      }
+    }
+    if (store.users.length > 0) {
+      const usersCol = db.collection('users');
+      for (const user of store.users) {
+        await usersCol.updateOne({ _id: user._id as any }, { $set: user }, { upsert: true });
+      }
+    }
+    if (store.products.length > 0) {
+      const productsCol = db.collection('products');
+      for (const prod of store.products) {
+        await productsCol.updateOne({ _id: prod._id as any }, { $set: prod }, { upsert: true });
+      }
+    }
+  } catch (err) {
+    console.error('MongoDB Atlas sync error:', err);
+  }
+}
+
 async function saveStore(): Promise<void> {
   if (!memoryStore) return;
   await ensureDataDirectory();
   await fs.writeFile(STORE_FILE, JSON.stringify(memoryStore, null, 2), 'utf-8');
+  syncToMongo(memoryStore).catch(() => {});
 }
 
 // ======================== PRODUCT OPERATIONS ========================
 
-export async function getAllProducts(filters?: FilterState): Promise<Product[]> {
+export async function getAllProducts(filters?: FilterState, isAdmin = false): Promise<Product[]> {
   const store = await getStore();
   let list = [...store.products];
 
@@ -233,17 +179,33 @@ export async function getAllProducts(filters?: FilterState): Promise<Product[]> 
     }
   }
 
+  if (!isAdmin) {
+    return list.map(({ purchasePrice: _, ...publicProduct }) => publicProduct as Product);
+  }
+
   return list;
 }
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(slug: string, isAdmin = false): Promise<Product | null> {
   const store = await getStore();
-  return store.products.find((p) => p.slug === slug) || null;
+  const p = store.products.find((prod) => prod.slug === slug);
+  if (!p) return null;
+  if (!isAdmin) {
+    const { purchasePrice: _, ...publicProduct } = p;
+    return publicProduct as Product;
+  }
+  return p;
 }
 
-export async function getProductById(id: string): Promise<Product | null> {
+export async function getProductById(id: string, isAdmin = false): Promise<Product | null> {
   const store = await getStore();
-  return store.products.find((p) => p._id === id) || null;
+  const p = store.products.find((prod) => prod._id === id);
+  if (!p) return null;
+  if (!isAdmin) {
+    const { purchasePrice: _, ...publicProduct } = p;
+    return publicProduct as Product;
+  }
+  return p;
 }
 
 export async function createProduct(productData: Partial<Product>): Promise<Product> {
@@ -362,6 +324,27 @@ export async function createOrder(data: {
 }): Promise<Order> {
   const store = await getStore();
 
+  // Validate real products, selling prices, and stock
+  for (const item of data.items) {
+    const prod = store.products.find((p) => p._id === item.productId);
+    if (!prod) {
+      throw new Error(`Product "${item.title}" not found in inventory.`);
+    }
+    if (prod.status !== 'active') {
+      throw new Error(
+        `Product "${prod.title}" is in draft / pending price approval and cannot be purchased yet.`
+      );
+    }
+    if (!prod.price || prod.price <= 0) {
+      throw new Error(`Product "${prod.title}" does not have an approved store selling price.`);
+    }
+    if (prod.stock < item.quantity) {
+      throw new Error(
+        `Insufficient stock for "${prod.title}". Requested: ${item.quantity}, Available: ${prod.stock}`
+      );
+    }
+  }
+
   const orderNumber = `TYZ-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
 
   const newOrder: Order = {
@@ -471,7 +454,26 @@ export async function getAllCoupons(): Promise<Coupon[]> {
 
 export async function findUserByEmail(email: string): Promise<(User & { passwordHash: string }) | null> {
   const store = await getStore();
-  return store.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
+  return store.users.find((u) => u.email && u.email.toLowerCase() === email.toLowerCase()) || null;
+}
+
+export async function findUserByPhone(phone: string): Promise<(User & { passwordHash: string }) | null> {
+  const store = await getStore();
+  const cleanPhone = phone.replace(/\D/g, '');
+  return (
+    store.users.find((u) => {
+      if (!u.phone) return false;
+      const uClean = u.phone.replace(/\D/g, '');
+      return uClean.slice(-10) === cleanPhone.slice(-10);
+    }) || null
+  );
+}
+
+export async function findUserByIdentifier(identifier: string): Promise<(User & { passwordHash: string }) | null> {
+  if (identifier.includes('@')) {
+    return findUserByEmail(identifier);
+  }
+  return findUserByPhone(identifier);
 }
 
 export async function findUserById(id: string): Promise<User | null> {
@@ -484,6 +486,9 @@ export async function findUserById(id: string): Promise<User | null> {
     email: u.email,
     role: u.role,
     phone: u.phone,
+    isEmailVerified: Boolean(u.isEmailVerified),
+    isPhoneVerified: Boolean(u.isPhoneVerified),
+    registrationMethod: u.registrationMethod || 'email',
     addresses: u.addresses,
     createdAt: u.createdAt,
   };
@@ -491,24 +496,45 @@ export async function findUserById(id: string): Promise<User | null> {
 
 export async function registerUser(userData: {
   name: string;
-  email: string;
-  password: string;
+  email?: string;
   phone?: string;
+  password: string;
+  registrationMethod: 'email' | 'phone';
 }): Promise<User> {
   const store = await getStore();
-  const existing = store.users.find((u) => u.email.toLowerCase() === userData.email.toLowerCase());
-  if (existing) {
-    throw new Error('User with this email already exists.');
+
+  if (userData.email) {
+    const existingEmail = store.users.find(
+      (u) => u.email && u.email.toLowerCase() === userData.email!.toLowerCase()
+    );
+    if (existingEmail) {
+      throw new Error('An account with this email already exists. Please log in or use another email.');
+    }
+  }
+
+  if (userData.phone) {
+    const cleanPhone = userData.phone.replace(/\D/g, '');
+    const existingPhone = store.users.find((u) => {
+      if (!u.phone) return false;
+      const uClean = u.phone.replace(/\D/g, '');
+      return uClean.slice(-10) === cleanPhone.slice(-10);
+    });
+    if (existingPhone) {
+      throw new Error('An account with this mobile number already exists. Please log in.');
+    }
   }
 
   const passwordHash = await hashPassword(userData.password);
   const newUser = {
     _id: `user-${Date.now()}`,
     name: userData.name,
-    email: userData.email.toLowerCase(),
+    email: userData.email ? userData.email.toLowerCase() : '',
     passwordHash,
     role: 'customer' as const,
     phone: userData.phone || '',
+    isEmailVerified: false,
+    isPhoneVerified: false,
+    registrationMethod: userData.registrationMethod,
     addresses: [],
     createdAt: new Date().toISOString(),
   };
@@ -522,9 +548,236 @@ export async function registerUser(userData: {
     email: newUser.email,
     role: newUser.role,
     phone: newUser.phone,
+    isEmailVerified: newUser.isEmailVerified,
+    isPhoneVerified: newUser.isPhoneVerified,
+    registrationMethod: newUser.registrationMethod,
     addresses: newUser.addresses,
     createdAt: newUser.createdAt,
   };
+}
+
+export async function activateUserVerification(
+  identifier: string,
+  method: 'email' | 'phone'
+): Promise<User> {
+  const store = await getStore();
+  const user = store.users.find((u) => {
+    if (method === 'email') {
+      return u.email && u.email.toLowerCase() === identifier.toLowerCase();
+    } else {
+      const cleanTarget = identifier.replace(/\D/g, '');
+      const uClean = (u.phone || '').replace(/\D/g, '');
+      return uClean.slice(-10) === cleanTarget.slice(-10);
+    }
+  });
+
+  if (!user) {
+    throw new Error('User account not found for activation.');
+  }
+
+  if (method === 'email') {
+    user.isEmailVerified = true;
+  } else {
+    user.isPhoneVerified = true;
+  }
+
+  await saveStore();
+
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+    isEmailVerified: user.isEmailVerified,
+    isPhoneVerified: user.isPhoneVerified,
+    registrationMethod: user.registrationMethod,
+    addresses: user.addresses,
+    createdAt: user.createdAt,
+  };
+}
+
+export async function findOrCreateFirebaseUser(params: {
+  method: 'google' | 'phone';
+  email?: string;
+  phone?: string;
+  name?: string;
+}): Promise<User> {
+  const store = await getStore();
+
+  if (params.method === 'google' && params.email) {
+    const cleanEmail = params.email.trim().toLowerCase();
+    let existing = store.users.find(
+      (u) => u.email && u.email.toLowerCase() === cleanEmail
+    );
+
+    if (existing) {
+      existing.isEmailVerified = true;
+      if (params.name && (!existing.name || existing.name === 'Google User')) {
+        existing.name = params.name;
+      }
+      await saveStore();
+      return {
+        _id: existing._id,
+        name: existing.name,
+        email: existing.email,
+        role: existing.role,
+        phone: existing.phone,
+        isEmailVerified: existing.isEmailVerified,
+        isPhoneVerified: existing.isPhoneVerified,
+        registrationMethod: existing.registrationMethod,
+        addresses: existing.addresses,
+        createdAt: existing.createdAt,
+      };
+    }
+
+    // Create new Google verified user
+    const randomHash = await hashPassword(`google-${Date.now()}-${Math.random()}`);
+    const newUser = {
+      _id: `user-${Date.now()}`,
+      name: params.name || 'Google Customer',
+      email: cleanEmail,
+      passwordHash: randomHash,
+      role: 'customer' as const,
+      phone: params.phone || '',
+      isEmailVerified: true,
+      isPhoneVerified: false,
+      registrationMethod: 'email' as const,
+      addresses: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    store.users.push(newUser);
+    await saveStore();
+    return {
+      _id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      phone: newUser.phone,
+      isEmailVerified: newUser.isEmailVerified,
+      isPhoneVerified: newUser.isPhoneVerified,
+      registrationMethod: newUser.registrationMethod,
+      addresses: newUser.addresses,
+      createdAt: newUser.createdAt,
+    };
+  }
+
+  if (params.method === 'phone' && params.phone) {
+    const cleanDigits = params.phone.replace(/\D/g, '').slice(-10);
+    let existing = store.users.find((u) => {
+      if (!u.phone) return false;
+      const uClean = u.phone.replace(/\D/g, '').slice(-10);
+      return uClean === cleanDigits;
+    });
+
+    if (existing) {
+      existing.isPhoneVerified = true;
+      if (params.name && (!existing.name || existing.name === 'Toyzz Customer')) {
+        existing.name = params.name;
+      }
+      await saveStore();
+      return {
+        _id: existing._id,
+        name: existing.name,
+        email: existing.email,
+        role: existing.role,
+        phone: existing.phone,
+        isEmailVerified: existing.isEmailVerified,
+        isPhoneVerified: existing.isPhoneVerified,
+        registrationMethod: existing.registrationMethod,
+        addresses: existing.addresses,
+        createdAt: existing.createdAt,
+      };
+    }
+
+    // Create new Phone verified user
+    const randomHash = await hashPassword(`phone-${Date.now()}-${Math.random()}`);
+    const newUser = {
+      _id: `user-${Date.now()}`,
+      name: params.name || 'Toyzz Customer',
+      email: params.email || '',
+      passwordHash: randomHash,
+      role: 'customer' as const,
+      phone: `+91${cleanDigits}`,
+      isEmailVerified: false,
+      isPhoneVerified: true,
+      registrationMethod: 'phone' as const,
+      addresses: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    store.users.push(newUser);
+    await saveStore();
+    return {
+      _id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      phone: newUser.phone,
+      isEmailVerified: newUser.isEmailVerified,
+      isPhoneVerified: newUser.isPhoneVerified,
+      registrationMethod: newUser.registrationMethod,
+      addresses: newUser.addresses,
+      createdAt: newUser.createdAt,
+    };
+  }
+
+  throw new Error('Invalid Firebase authentication parameters.');
+}
+
+// ======================== OTP OPERATIONS ========================
+
+export async function saveOtpRecord(otpRecord: OtpRecord): Promise<void> {
+  const store = await getStore();
+  // Invalidate any previous unconsumed OTPs for this identifier
+  store.otps.forEach((o) => {
+    if (o.identifier.toLowerCase() === otpRecord.identifier.toLowerCase() && !o.consumed) {
+      o.consumed = true;
+    }
+  });
+
+  store.otps.push(otpRecord);
+  await saveStore();
+}
+
+export async function getLatestActiveOtp(
+  identifier: string,
+  type: 'registration' | 'login' | 'reset_password'
+): Promise<OtpRecord | null> {
+  const store = await getStore();
+  const cleanId = identifier.includes('@')
+    ? identifier.toLowerCase()
+    : identifier.replace(/\D/g, '').slice(-10);
+
+  const matched = store.otps
+    .filter((o) => {
+      const matchId = o.identifier.includes('@')
+        ? o.identifier.toLowerCase()
+        : o.identifier.replace(/\D/g, '').slice(-10);
+      return matchId === cleanId && o.type === type && !o.consumed;
+    })
+    .sort((a, b) => b.expiresAt - a.expiresAt);
+
+  return matched[0] || null;
+}
+
+export async function incrementOtpAttempts(otpId: string): Promise<number> {
+  const store = await getStore();
+  const otp = store.otps.find((o) => o._id === otpId);
+  if (!otp) return 0;
+  otp.attempts += 1;
+  await saveStore();
+  return otp.attempts;
+}
+
+export async function markOtpConsumed(otpId: string): Promise<void> {
+  const store = await getStore();
+  const otp = store.otps.find((o) => o._id === otpId);
+  if (otp) {
+    otp.consumed = true;
+    await saveStore();
+  }
 }
 
 // ======================== ADMIN ANALYTICS ========================

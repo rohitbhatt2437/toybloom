@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -10,12 +10,36 @@ import {
   ShoppingBag,
   LogOut,
   ArrowLeft,
-  ShieldAlert,
+  Mail,
+  Lock,
+  ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAdmin, logout } = useAuth();
+  const { user, loading, isAdmin, login, logout } = useAuth();
   const router = useRouter();
+
+  const [adminEmail, setAdminEmail] = useState('admin@toyzz.com');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setLoginLoading(true);
+    try {
+      const res = await login(adminEmail, adminPassword);
+      if (!res.success) {
+        setErrorMsg(res.message || 'Invalid store owner credentials.');
+      }
+    } catch {
+      setErrorMsg('Login failed. Please verify credentials.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -27,20 +51,82 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 text-center">
-        <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
-          <ShieldAlert className="w-8 h-8" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 px-4 py-12">
+        <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-rose-500 text-white flex items-center justify-center mx-auto shadow-md">
+              <Sparkles className="w-7 h-7 fill-white" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              Store Owner Portal
+            </h1>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto">
+              Sign in with your administrator credentials to access showroom inventory, approve prices, and view customer orders.
+            </p>
+          </div>
+
+          {errorMsg && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Admin Email
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@toyzz.com"
+                  className="w-full pl-10 pr-4 py-3 text-xs rounded-2xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  required
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Enter admin password (admin123)"
+                  className="w-full pl-10 pr-4 py-3 text-xs rounded-2xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loginLoading}
+              className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <span>{loginLoading ? 'Verifying Credentials...' : 'Unlock Admin Dashboard'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="pt-2 text-center border-t border-slate-100">
+            <Link
+              href="/"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-600 inline-flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Toy Store</span>
+            </Link>
+          </div>
         </div>
-        <h1 className="text-xl font-bold text-slate-800 mb-2">Admin Access Required</h1>
-        <p className="text-xs text-slate-500 max-w-sm mb-6">
-          You need an administrator account to view the Toyzz backend console.
-        </p>
-        <Link
-          href="/account/login"
-          className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800"
-        >
-          Sign In as Admin
-        </Link>
       </div>
     );
   }

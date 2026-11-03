@@ -20,25 +20,22 @@ export default function DealsBanner() {
             </div>
 
             <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              Get Up To <span className="text-amber-400">50% OFF</span> + Extra 10% With Coupon
+              Safety Certified & Curated Toys for Growing Minds
             </h3>
 
             <p className="text-sm text-slate-300 max-w-xl">
-              Stock up on award-winning educational toys, 3D printing pens, dancing robots, and Montessori speech readers. Free gift packaging on orders above ₹999.
+              From screen-free Montessori speech cards to robotic engineering sets, our collection is curated for developmental fun and certified non-toxic durability.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2.5">
-                <Tag className="w-4 h-4 text-amber-400" />
-                <span className="text-xs text-slate-300 font-medium">Use Coupon:</span>
-                <span className="text-sm font-mono font-black text-amber-400 tracking-wider">
-                  TOYZZ10
-                </span>
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-slate-300 font-medium">100% Verified Physical Store Stock</span>
               </div>
 
               <div className="flex items-center gap-2 text-xs text-slate-300">
                 <CheckCircle className="w-4 h-4 text-emerald-400" />
-                <span>Instant Checkout Discount</span>
+                <span>Same-Day Packing & Direct Dispatch</span>
               </div>
             </div>
           </div>

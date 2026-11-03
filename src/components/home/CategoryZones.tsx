@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Hammer, Gamepad2, Telescope, Palette, GraduationCap, ArrowRight } from 'lucide-react';
+import { Hammer, Gamepad2, Telescope, Palette, GraduationCap, ArrowRight, Sparkles } from 'lucide-react';
 import { Category } from '@/types';
 
 interface CategoryZonesProps {
@@ -92,4 +92,3 @@ export default function CategoryZones({ categories }: CategoryZonesProps) {
     </section>
   );
 }
-import { Sparkles } from 'lucide-react';
